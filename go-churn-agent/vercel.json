@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/predict.go",
+      "use": "@vercel/go",
+      "config": {
+        "maxLambdaSize": "50mb"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/predict",
+      "dest": "api/predict.go",
+      "methods": ["POST"]
+    }
+  ]
+}
