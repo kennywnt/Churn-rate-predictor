@@ -8,11 +8,19 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 # Copy the rest of the source code
-COPY . .
+# Specific copies are better for layer caching if go.mod/go.sum haven't changed
+COPY go.mod go.sum ./
+RUN go mod download # Ensure dependencies are downloaded based on go.mod/go.sum
 
-# Build the Go application
+COPY pkg/ pkg/
+COPY api/ api/
+COPY cmd/ cmd/
+# If there were other root .go files needed by cmd/server, they'd need copying too.
+# For now, assuming cmd/server only depends on api and pkg.
+
+# Build the Go application for the server
 # Output the binary to /go-churn-agent (within the builder stage)
-RUN go build -o /go-churn-agent .
+RUN go build -o /go-churn-agent ./cmd/server/main.go
 
 # Runtime Stage
 FROM alpine:latest

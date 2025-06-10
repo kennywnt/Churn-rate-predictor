@@ -28,80 +28,77 @@ The Go Churn Prediction Agent is a **REST API server** that predicts customer ch
 ### 1. Supabase Setup
 
 1.  **Create a Supabase Project:**
-    *   Go to [Supabase](https://supabase.com/) and create a new project if you haven't already.
+    *   Go to [Supabase](https://supabase.com/) and create a new project.
 2.  **Database Schema:**
-    *   The required database tables can be created using the schema provided in the `schema.sql` file in this repository. You can run this SQL in the Supabase SQL Editor for your project.
-    *   Ensure the `uuid-ossp` extension is enabled in your Supabase project (Database -> Extensions). If not, run: `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";` before running `schema.sql`.
+    *   Use the schema in `schema.sql` to create the necessary tables (`customer_feedback`, `churn_predictions`) in your Supabase project via the SQL Editor.
+    *   Ensure the `uuid-ossp` extension is enabled in Supabase (Database -> Extensions). If not, run: `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";` before applying the schema.
 3.  **Get Project Credentials:**
-    *   **Project URL:** Find this in your Supabase project settings under "API" -> "Project URL".
-    *   **Service Role Key:** Find this under "API" -> "Project API Keys" -> "service_role" (secret). **Important:** Keep this key confidential.
+    *   **Project URL:** Found in Supabase project settings (API -> Project URL).
+    *   **Service Role Key:** Found in Supabase project settings (API -> Project API Keys -> `service_role` secret). Keep this confidential.
 
-### 2. Application Configuration
+### 2. Hugging Face API Token
+    *   You'll need an API token from Hugging Face to use the sentiment analysis and topic extraction models.
+    *   Obtain a token from [Hugging Face User Access Tokens](https://huggingface.co/settings/tokens).
+
+### 3. Environment Variables
 
 The application requires the following environment variables to be set:
 
 -   `SUPABASE_URL`: Your Supabase project's API URL.
--   `SUPABASE_KEY`: Your Supabase project's Service Role Key (secret).
--   `HF_TOKEN`: Your Hugging Face API token (for accessing sentiment and topic models). You can get a token from [Hugging Face](https://huggingface.co/settings/tokens).
+-   `SUPABASE_KEY`: Your Supabase project's Service Role Key.
+-   `HF_TOKEN`: Your Hugging Face API token.
 
-**Example of setting environment variables (Linux/macOS):**
-```bash
-export SUPABASE_URL="https://your-project-id.supabase.co"
-export SUPABASE_KEY="your-very-long-service-role-key"
-export HF_TOKEN="your_hugging_face_api_token"
-```
-**Example (Windows PowerShell):**
-```powershell
-$Env:SUPABASE_URL="https://your-project-id.supabase.co"
-$Env:SUPABASE_KEY="your-very-long-service-role-key"
-$Env:HF_TOKEN="your_hugging_face_api_token"
-```
-The application will fail to start if these environment variables are not set.
+The application will fail to start if these are not correctly configured. For local development with Vercel CLI, these can be placed in a `.env` file. For Vercel deployments, set them in the project's environment variable settings on the Vercel dashboard. For Docker, pass them during `docker run`.
 
-## Building and Running Locally (API Server)
+## Local Development with Vercel CLI
 
-1.  **Clone the repository (if you haven't already):**
+This is the recommended way to run the application locally as it closely mimics the Vercel deployment environment.
+
+1.  **Install Vercel CLI:**
     ```bash
-    git clone <repository_url>
-    cd <repository_name>/go-churn-agent
+    npm install -g vercel
     ```
-2.  **Set Supabase Environment Variables:**
-    Ensure you have set the `SUPABASE_URL` and `SUPABASE_KEY` environment variables as described above.
-3.  **Run the application (API Server):**
+2.  **Set Environment Variables:**
+    *   Create a `.env` file in the project root (`go-churn-agent/`) with your credentials:
+        ```env
+        SUPABASE_URL=your_supabase_url
+        SUPABASE_KEY=your_supabase_service_role_key
+        HF_TOKEN=your_hugging_face_token
+        ```
+        **Important:** Add `.env` to your `.gitignore` file to prevent committing secrets.
+    *   Alternatively, link your project to Vercel (`vercel link`) and manage environment variables through the Vercel dashboard.
+3.  **Run the Development Server:**
+    From the `go-churn-agent` root directory:
     ```bash
-    go run main.go
+    vercel dev
     ```
-    This will start the API server, typically listening on port `8080`. You should see a log message like "Starting server on port :8080".
-4.  **Run Go unit tests:**
-    ```bash
-    go test -v ./...
-    ```
+    The Vercel CLI will typically start the server on `http://localhost:3000`. The API endpoint `/predict` will be available (e.g., `http://localhost:3000/predict`, due to routing in `vercel.json`).
 
-## Running API Tests with Karate
+## Deploying to Vercel
 
-The API tests are written using Karate and managed with Maven.
+1.  **Sign up/Log in to Vercel.**
+2.  **Install Vercel CLI** (if not already done): `npm install -g vercel`.
+3.  **Connect your Git Repository:**
+    *   Import your project into Vercel by connecting it to your GitHub, GitLab, or Bitbucket repository.
+4.  **Configure Environment Variables:**
+    *   In your Vercel project settings (Dashboard -> Project -> Settings -> Environment Variables), add `SUPABASE_URL`, `SUPABASE_KEY`, and `HF_TOKEN` with their respective values.
+5.  **Deploy:**
+    *   Vercel automatically builds and deploys your project when you push to the connected Git branch (e.g., `main`).
+    *   The `vercel.json` file in the repository root configures Vercel to build `api/predict.go` as a serverless function and route `POST /predict` requests to it.
+6.  **Access Your Deployment:**
+    *   Vercel will provide a production URL for your deployment.
 
-1.  **Start the Go API Server:**
-    Ensure the `go-churn-agent` API server is running locally (see "Building and Running Locally" section). By default, it should be accessible at `http://localhost:8080`.
-2.  **Navigate to the Karate tests directory:**
-    ```bash
-    cd karate-tests
-    ```
-3.  **Run the Karate tests using Maven:**
-    ```bash
-    mvn test
-    ```
-    Test reports are typically generated in the `karate-tests/target/surefire-reports` directory. You can find an HTML report (e.g., `karate-summary.html`) in `karate-tests/target/karate-reports/`.
+## Building and Running with Docker (Alternative Deployment / Testing)
 
-## Building and Running with Docker
+This method builds a standalone Docker container running a traditional Go HTTP server. It uses the `cmd/server/main.go` entrypoint.
 
 1.  **Build the Docker image:**
-    From within the `go-churn-agent` root directory:
+    From the `go-churn-agent` root directory:
     ```bash
     docker build -t go-churn-agent .
     ```
 2.  **Run the Docker container:**
-    You must provide the Supabase and Hugging Face credentials as environment variables to the container.
+    Provide the necessary environment variables:
     ```bash
     docker run -p 8080:8080 --rm \
       -e SUPABASE_URL="your_actual_supabase_url" \
@@ -109,10 +106,42 @@ The API tests are written using Karate and managed with Maven.
       -e HF_TOKEN="your_actual_hf_token" \
       go-churn-agent
     ```
-    *   `-p 8080:8080`: Maps port 8080 from the container to port 8080 on your host machine.
+    *   `-p 8080:8080`: Maps port 8080 from the container to port 8080 on your host. The API will be accessible at `http://localhost:8080/predict`.
     *   `--rm`: Automatically removes the container when it exits.
-    *   `-e SUPABASE_URL=...`: Sets the Supabase URL environment variable inside the container.
-    *   `-e SUPABASE_KEY=...`: Sets the Supabase Key environment variable inside the container.
+
+## Go Modules and Dependencies
+If you modify dependencies in `go.mod` (e.g., by adding new packages in `pkg/appcore` or `api`), run:
+```bash
+go mod tidy
+```
+This will ensure `go.sum` is updated and dependencies are correctly managed.
+
+## Running Tests
+
+### Go Unit Tests
+These test the core Go logic in `pkg/appcore`.
+```bash
+go test -v ./...
+```
+
+### API Tests with Karate
+These tests target a running instance of the API.
+
+1.  **Start the API Server:**
+    *   **For `vercel dev`:** Run `vercel dev` (targets `http://localhost:3000` by default in `predict.feature`).
+    *   **For Docker:** Run the Docker container as described above (tests would need URL in `predict.feature` changed to `http://localhost:8080`).
+    *   **For deployed Vercel instance:** Change the URL in `predict.feature` to your Vercel deployment URL.
+2.  **Run Karate Tests:**
+    Navigate to the `karate-tests` directory:
+    ```bash
+    cd karate-tests
+    mvn test
+    ```
+    Or, from the project root:
+    ```bash
+    mvn test -f karate-tests/pom.xml
+    ```
+    Test reports are generated in `karate-tests/target/surefire-reports` and `karate-tests/target/karate-reports/`.
 
 ## API Documentation
 
@@ -175,23 +204,28 @@ The application provides a single REST API endpoint for churn prediction.
 
 ```
 go-churn-agent/
-├── Dockerfile          # Instructions for building the Docker image
+├── api/
+│   └── predict.go      # Vercel serverless function handler for /predict
+├── cmd/
+│   └── server/
+│       └── main.go     # Entrypoint for standalone Docker server
+├── pkg/
+│   └── appcore/
+│       └── appcore.go  # Shared core logic, types, client initializations
+├── karate-tests/       # Karate API tests
+│   ├── pom.xml         # Maven configuration for Karate tests
+│   └── src/test/java/com/example/api/
+│       ├── PredictApiRunner.java # Karate test runner
+│       └── predict.feature       # Karate feature file
+├── .env.example        # Example environment file (recommend creating a .env based on this)
+├── Dockerfile          # For building a standalone Docker image
 ├── go.mod              # Go module definition
 ├── go.sum              # Go module checksums
-├── main.go             # Main application logic (REST API server), Supabase interaction
-├── main_test.go        # Go unit tests for PredictChurn function
+├── main.go             # Minimal main, primarily for Go module structure
+├── main_test.go        # Go unit tests for pkg/appcore logic
 ├── README.md           # This file
 ├── schema.sql          # SQL schema for Supabase tables
-└── karate-tests/       # Karate API tests
-    ├── pom.xml         # Maven configuration for Karate tests
-    └── src/
-        └── test/
-            └── java/
-                └── com/
-                    └── example/
-                        └── api/
-                            ├── PredictApiRunner.java  # Karate test runner
-                            └── predict.feature        # Karate feature file for API tests
+└── vercel.json         # Vercel deployment configuration
 ```
 
 ## Note on Prediction Logic Evolution

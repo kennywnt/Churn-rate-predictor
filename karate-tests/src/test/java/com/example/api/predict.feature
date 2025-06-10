@@ -1,7 +1,7 @@
 Feature: Churn Prediction API
 
   Background:
-    * url 'http://localhost:8080' # Base URL for the API - ensure the Go app runs on this port
+    * url 'http://localhost:3000' # Base URL for local development via `vercel dev`
 
   Scenario: Successful prediction with valid data
     Given path '/predict'
