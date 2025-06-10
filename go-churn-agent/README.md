@@ -7,9 +7,10 @@ The Go Churn Prediction Agent is a **REST API server** that predicts customer ch
 ## Features
 
 -   Provides a REST API endpoint (`/predict`) for churn prediction.
--   Predicts churn probability using NLS score and customer feedback.
--   Stores customer feedback data and churn predictions in a Supabase database.
--   Configuration via environment variables for Supabase credentials.
+-   Enriches customer feedback with AI-driven sentiment analysis and topic extraction using Hugging Face models.
+-   Predicts churn probability using NLS score, keyword-based feedback analysis, and comment sentiment.
+-   Stores customer feedback data (including LLM insights) and churn predictions in a Supabase database.
+-   Configuration via environment variables for Supabase and Hugging Face credentials.
 -   Dockerized for easy setup and deployment.
 -   Includes basic unit tests for the prediction logic.
 -   Includes API tests using Karate.
@@ -37,20 +38,23 @@ The Go Churn Prediction Agent is a **REST API server** that predicts customer ch
 
 ### 2. Application Configuration
 
-The application requires the following environment variables to be set for connecting to your Supabase project:
+The application requires the following environment variables to be set:
 
 -   `SUPABASE_URL`: Your Supabase project's API URL.
 -   `SUPABASE_KEY`: Your Supabase project's Service Role Key (secret).
+-   `HF_TOKEN`: Your Hugging Face API token (for accessing sentiment and topic models). You can get a token from [Hugging Face](https://huggingface.co/settings/tokens).
 
 **Example of setting environment variables (Linux/macOS):**
 ```bash
 export SUPABASE_URL="https://your-project-id.supabase.co"
 export SUPABASE_KEY="your-very-long-service-role-key"
+export HF_TOKEN="your_hugging_face_api_token"
 ```
 **Example (Windows PowerShell):**
 ```powershell
 $Env:SUPABASE_URL="https://your-project-id.supabase.co"
 $Env:SUPABASE_KEY="your-very-long-service-role-key"
+$Env:HF_TOKEN="your_hugging_face_api_token"
 ```
 The application will fail to start if these environment variables are not set.
 
@@ -97,11 +101,12 @@ The API tests are written using Karate and managed with Maven.
     docker build -t go-churn-agent .
     ```
 2.  **Run the Docker container:**
-    You must provide the Supabase credentials as environment variables to the container.
+    You must provide the Supabase and Hugging Face credentials as environment variables to the container.
     ```bash
     docker run -p 8080:8080 --rm \
       -e SUPABASE_URL="your_actual_supabase_url" \
       -e SUPABASE_KEY="your_actual_supabase_key" \
+      -e HF_TOKEN="your_actual_hf_token" \
       go-churn-agent
     ```
     *   `-p 8080:8080`: Maps port 8080 from the container to port 8080 on your host machine.
@@ -134,10 +139,14 @@ The application provides a single REST API endpoint for churn prediction.
     ```json
     {
       "customer_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-      "churn_probability": 0.1,
-      "reason": "High NLS score."
+      "churn_probability": 0.8,
+      "reason": "Low NLS score and/or negative feedback/sentiment.",
+      "comment_sentiment": "NEGATIVE",
+      "comment_topics": ["customer service", "wait times"]
     }
     ```
+    *   `comment_sentiment` (string, optional): The sentiment derived from the feedback text (e.g., "POSITIVE", "NEGATIVE", "NEUTRAL", "UNKNOWN").
+    *   `comment_topics` (array of strings, optional): A list of topics extracted from the feedback text.
 
 *   **Error Responses (JSON):**
     *   **`400 Bad Request`**: Sent for issues like invalid JSON, missing required fields, or invalid data values (e.g., NLS score out of range).
@@ -184,3 +193,8 @@ go-churn-agent/
                             ├── PredictApiRunner.java  # Karate test runner
                             └── predict.feature        # Karate feature file for API tests
 ```
+
+## Note on Prediction Logic Evolution
+The integration of LLM-derived insights (sentiment and topics) into the churn prediction logic is iterative.
+- Currently, `CommentSentiment` is used in conjunction with NLS scores to refine churn probability (e.g., a very low NLS score combined with negative sentiment strongly indicates high churn).
+- `CommentTopics` are collected and stored but are not yet directly used to alter the churn probability score in this phase. They are available for data analysis and can be incorporated into more advanced prediction models in future iterations.

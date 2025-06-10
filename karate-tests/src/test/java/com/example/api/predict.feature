@@ -11,6 +11,8 @@ Feature: Churn Prediction API
     And match response.customer_id == "#string"
     And match response.churn_probability == 0.1
     And match response.reason == "High NLS score."
+    And match response.comment_sentiment == "#string"
+    And match response.comment_topics == "#array"
 
   Scenario: Invalid NLS score (too high)
     Given path '/predict'
@@ -54,7 +56,9 @@ Feature: Churn Prediction API
     Then status 200
     And match response.customer_id == "#string"
     And match response.churn_probability == 0.8
-    And match response.reason == "Low NLS score and negative feedback."
+    And match response.reason == "Low NLS score and/or negative feedback/sentiment." # Updated reason
+    And match response.comment_sentiment == "#string"
+    And match response.comment_topics == "#array"
 
   Scenario: Moderate NLS score
     Given path '/predict'
@@ -63,4 +67,6 @@ Feature: Churn Prediction API
     Then status 200
     And match response.customer_id == "#string"
     And match response.churn_probability == 0.4
-    And match response.reason == "Moderate NLS score or neutral feedback."
+    And match response.reason == "Moderate NLS score or neutral feedback/sentiment." # Updated reason
+    And match response.comment_sentiment == "#string"
+    And match response.comment_topics == "#array"

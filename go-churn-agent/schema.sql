@@ -7,7 +7,9 @@ CREATE TABLE public.customer_feedback (
     id UUID DEFAULT uuid_generate_v4() NOT NULL PRIMARY KEY,
     nls_score INT,
     feedback_text TEXT,
-    created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+    comment_sentiment TEXT NULL,
+    comment_topics TEXT[] NULL
 );
 
 -- Optional: Add a comment to describe the table
